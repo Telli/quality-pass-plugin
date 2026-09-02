@@ -1,0 +1,10 @@
+{
+  "name": "quality-pass",
+  "version": "1.0.0",
+  "description": "Evidence-first quality pass for existing codebases: parallel read-only reviews (slop, bugs, security, perf, dead code, architecture), self-verified findings, then gated fixes in return-on-effort order.",
+  "author": { "name": "telli" },
+  "homepage": "https://github.com/telli/quality-pass-plugin",
+  "repository": "https://github.com/telli/quality-pass-plugin",
+  "license": "MIT",
+  "keywords": ["code-quality", "review", "refactoring", "dead-code", "performance", "security", "de-slop", "agent-skills"]
+}

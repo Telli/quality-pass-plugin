@@ -1,0 +1,14 @@
+{
+  "name": "quality-pass-marketplace",
+  "owner": { "name": "telli" },
+  "description": "Marketplace hosting the quality-pass plugin.",
+  "plugins": [
+    {
+      "name": "quality-pass",
+      "source": "./",
+      "description": "Evidence-first quality pass: review, verify, fix in return-on-effort order with green gates per phase.",
+      "category": "code-quality",
+      "keywords": ["review", "refactoring", "dead-code", "performance", "security"]
+    }
+  ]
+}

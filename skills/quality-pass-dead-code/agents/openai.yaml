@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quality Pass: Dead Code"
+  short_description: "Verified dead-code sweep with two-pattern checks"
+  default_prompt: "Sweep dead code in this repository: verify each candidate with both search patterns immediately before deleting, delete with its tests, run the gate, report removed lines and NOT-dead surprises."

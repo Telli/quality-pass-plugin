@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quality Pass: Gate"
+  short_description: "Run typecheck, lint, tests, build and report verbatim"
+  default_prompt: "Run the quality-pass gate for this repository and report the summary verbatim."

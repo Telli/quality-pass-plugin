@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quality Pass: Execute"
+  short_description: "Apply an approved quality-pass report in gated phases"
+  default_prompt: "Execute the approved quality-pass report in this repository, one gated commit per phase, and append the hand-off sections when done."

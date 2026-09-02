@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quality Pass"
+  short_description: "Review, verify, then fix a codebase in gated phases"
+  default_prompt: "Run a full quality pass on this repository: baseline gate, six read-only reviews, self-verify the findings, present the plan, then execute approved phases with a green gate per commit."

@@ -1,0 +1,32 @@
+name: validate
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: for f in scripts/*.sh skills/*/scripts/*.sh; do bash -n "$f"; done
+      - name: Reviewer briefs mirror is current
+        run: scripts/build-reviewer-briefs.sh --check
+      - name: Skill frontmatter is portable (name matches dir, description present, only spec fields)
+        run: |
+          set -e
+          for d in skills/*/; do
+            n=$(basename "$d"); f="$d/SKILL.md"
+            fm=$(awk 'NR==1&&$0!="---"{exit 1} NR>1&&$0=="---"{exit} NR>1{print}' "$f")
+            echo "$fm" | grep -q "^name: $n$" || { echo "$f: name must be '$n'"; exit 1; }
+            echo "$fm" | grep -q "^description: ." || { echo "$f: missing description"; exit 1; }
+            bad=$(echo "$fm" | grep -E '^[a-zA-Z_-]+:' | grep -vE '^(name|description|license|compatibility|metadata|allowed-tools):' || true)
+            [ -z "$bad" ] || { echo "$f: non-portable frontmatter: $bad"; exit 1; }
+          done
+      - name: gate.sh smoke
+        run: |
+          mkdir -p /tmp/g && cd /tmp/g && printf 'true\nfalse\n' > gates && mkdir .quality-pass && mv gates .quality-pass/
+          if "$GITHUB_WORKSPACE"/skills/quality-pass/scripts/gate.sh; then echo "expected failure exit"; exit 1; fi
+      - name: Claude Code manifest validation
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude plugin validate --strict .claude-plugin/plugin.json
+          claude plugin validate --strict skills
+          claude plugin validate --strict agents

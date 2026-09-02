@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quality Pass: Review"
+  short_description: "Evidence-ranked review report, no code changes"
+  default_prompt: "Run a review-only quality pass on this repository and produce the ranked report with file:line evidence. Do not change any code."
