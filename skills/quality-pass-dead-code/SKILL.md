@@ -11,6 +11,10 @@ metadata:
 
 Deleting is the only irreversible step in a quality pass, so it gets the strictest rule: **two different searches, immediately before each deletion, both empty.**
 
+## Before the first deletion
+
+Run `../quality-pass/scripts/gate.sh --baseline` (sibling skill directory) so a red gate after the sweep is attributable to the sweep. If `.quality-pass/baseline.txt` already exists for this branch, skip.
+
 ## Per candidate
 
 1. **Pattern 1 — path.** Search for the module specifier and the basename without extension across the whole repo (all apps, packages, configs, docs that are executed such as storybook/e2e).
@@ -18,7 +22,7 @@ Deleting is the only irreversible step in a quality pass, so it gets the stricte
 3. **Either search finds a live user → keep it**, and write it in the report under "NOT dead".
 4. Delete the file/export **and its tests**. Remove a package only after its last importer is gone.
 5. After the last deletion of the batch run the full gate (`../quality-pass/scripts/gate.sh`). Fix or revert; never commit a red sweep.
-6. Report: files, line count removed, packages removed, and the "NOT dead" surprises with the reference that saved them.
+6. Report: files, line count removed, packages removed, and the "NOT dead" surprises with the reference that saved them. A rejected candidate is stated in the commit body **and** back to whoever produced the list (report, reviewer, tech lead), even when they said not to re-search; a wrong "certain" verdict is a finding about the review, not a private judgment call.
 
 ## Classic false positives (pattern 1 misses these, pattern 2 catches them)
 
