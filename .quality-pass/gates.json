@@ -1,0 +1,16 @@
+{
+  "gates": [
+    {
+      "id": "regression-tests",
+      "command": ["{python}", "scripts/test.py", "--report", "{report}"],
+      "kind": "test",
+      "timeout": 120,
+      "report": {"format": "junit", "path": "{report}"}
+    },
+    {
+      "id": "standalone-packages",
+      "command": ["{python}", "scripts/package-skills.py"],
+      "timeout": 120
+    }
+  ]
+}

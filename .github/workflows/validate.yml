@@ -1,10 +1,47 @@
 name: validate
 on: [push, pull_request]
 jobs:
+  regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.9', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Behavioral regression tests
+        run: python scripts/test.py --report .quality-pass/ci-tests.xml
+      - name: Standalone archives
+        run: python scripts/package-skills.py
+      - name: PowerShell entry points
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./skills/quality-pass/scripts/gate.ps1 --print
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./scripts/install-codex.ps1 --skill quality-pass-review --target .quality-pass/windows-skills
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: results-${{ matrix.os }}-${{ matrix.python }}
+          path: |
+            .quality-pass/ci-tests.xml
+            dist/
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Shell syntax
         run: for f in scripts/*.sh skills/*/scripts/*.sh; do bash -n "$f"; done
       - name: Reviewer briefs mirror is current
@@ -26,7 +63,7 @@ jobs:
           if "$GITHUB_WORKSPACE"/skills/quality-pass/scripts/gate.sh; then echo "expected failure exit"; exit 1; fi
       - name: Claude Code manifest validation
         run: |
-          npm install -g @anthropic-ai/claude-code
+          npm install -g @anthropic-ai/claude-code@2.1.296
           claude plugin validate --strict .claude-plugin/plugin.json
           claude plugin validate --strict skills
           claude plugin validate --strict agents

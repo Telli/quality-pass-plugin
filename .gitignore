@@ -1,2 +1,8 @@
-.quality-pass/logs/
+.quality-pass/*
+!.quality-pass/gates
+!.quality-pass/gates.json
+.agents/
+dist/
+__pycache__/
+*.pyc
 .DS_Store

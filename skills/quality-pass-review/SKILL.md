@@ -3,7 +3,7 @@ name: quality-pass-review
 description: Use when asked to review, audit, or assess an existing codebase for problems without changing it yet — "what's wrong with this repo", "review before we refactor", "give me a prioritized list", or when a quality pass needs approval before any fixes.
 license: MIT
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   part-of: quality-pass
 ---
 
@@ -11,14 +11,14 @@ metadata:
 
 Produce the ranked, evidence-backed report and stop. No code changes, no deletions, no "quick fixes while I'm here".
 
-**REQUIRED BACKGROUND:** the `quality-pass` skill in this plugin defines the iron rules; rules 1 and 2 apply here. Its `references/` directory (sibling skill directory `../quality-pass/references/`) holds the dimension checklists, reviewer briefs, and report template.
+**REQUIRED BACKGROUND:** read [quality-pass rules](../quality-pass/SKILL.md), [targeted coverage](../quality-pass/references/review-scope.md), and [evidence records](../quality-pass/references/finding-records.md). Rules 1 and 2 apply. These resources are bundled locally in standalone distributions.
 
 ## Steps
 
-1. **Baseline gate.** Run `../quality-pass/scripts/gate.sh --baseline` from the repo root (write `.quality-pass/gates` first if detection is wrong). Paste the summary. Pre-existing reds are recorded, not fixed.
-2. **Six read-only reviewers in parallel**, one per dimension: slop & honesty, bugs, security & data integrity, performance, dead code, architecture. Claude Code: agents `quality-pass:qp-slop-reviewer`, `quality-pass:qp-bug-hunter`, `quality-pass:qp-security-reviewer`, `quality-pass:qp-perf-reviewer`, `quality-pass:qp-dead-code-reviewer`, `quality-pass:qp-architecture-reviewer`, all dispatched in one message so they run concurrently. Elsewhere: use the briefs in `../quality-pass/references/reviewer-briefs.md`; sequential fresh contexts if parallelism is unavailable.
-3. **Verify yourself.** Open the file for every CRITICAL/HIGH finding and every deletion candidate. Confirm or reject with evidence. Expect at least one rejection; if you found none, look harder before reporting.
-4. **Write the report** using `../quality-pass/references/report-template.md`, including "Rejected on verification" and "Deliberately not doing".
+1. **Scope and baseline.** Accept a base branch/PR diff, paths/globs, or feature scope. Resolve concrete seeds and run `../quality-pass/scripts/review.py scope --base origin/main --mode standard` (or `--files`/`--feature`). Default to standard for a target and full otherwise; quick focuses on bugs/security. Resume with `review.py status`. Run `../quality-pass/scripts/gate.sh --baseline` if no JSON baseline exists. Paste the summary and record identified failures or unknown equivalence.
+2. **Scoped read-only reviewers**, one per selected dimension. Standard/full use slop, bugs, security, performance, dead code, architecture; quick uses bugs/security. Claude Code uses this plugin's `qp-*` agents; other hosts use `../quality-pass/references/reviewer-briefs.md`. Pass reviewed commit, seeds, mode, boundaries, and exclusions. Follow affected callers, tests, authorization boundaries, and contracts beyond the diff. Report actual coverage; use parallel or sequential fresh contexts as the host supports.
+3. **Verify every claim yourself.** Confirm, reject, or label suspected with a reproduction/measurement, command, and observed result. Persist each claim with `../quality-pass/scripts/review.py record`. Zero rejections is valid; an absent verification record is not.
+4. **Write the report** using [the template](../quality-pass/references/report-template.md), with stable IDs, scope limits, per-finding records, rejected claims (possibly none), and deliberately deferred work. Keep suspected/stale claims outside the action plan and reuse unchanged accepted/dismissed findings.
 5. **Stop.** End with the execution plan and the sentence: "Approve to continue with `quality-pass-execute`."
 
 ## Output shape
@@ -29,4 +29,4 @@ The deliverable is the report file (e.g. `docs/quality-pass/YYYY-MM-DD.md`) plus
 
 - "This one is trivial, I'll just fix it" — no. The value of a review-only pass is that nothing moved.
 - "Reviewer confidence: certain" — verify anyway.
-- Zero rejected claims — the verification step was skipped.
+- Missing verification records, unrun reproductions described as demonstrated, or a targeted pass described as a whole-codebase audit.

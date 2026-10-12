@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 — Unreleased
+
+- Structured baselines record commits, gate configuration, counts, failure identities/details, and current-run report evidence. Changed failures and reduced execution counts are regressions; unsupported/legacy evidence reports failure equivalence unknown. Existing baselines require explicit replacement.
+- Removed the rejection quota. Every claim needs a verification record, and zero rejections is valid.
+- Added branch/diff/file/feature scopes and quick, standard, and full modes with explicit coverage limits and affected-boundary tracing.
+- Added stable finding IDs, reproducible evidence records, local progress/decision history, stale-approval invalidation, and gated completion. Regression tests accompany bug fixes.
+- Generate deterministic self-contained ZIPs validated in isolation. Single-skill installation uses complete standalone copies and preserves modified installations.
+- Portable Python gate and installer cores, Bash/PowerShell entry points, recursive project discovery with explicit .NET targets, timeouts, and distinct missing-tool/optional-skip/zero-test outcomes.
+- Added regression tests and Linux/Windows CI coverage. Python 3.9+ is now required for the executable tools; legacy Bash gate commands remain supported.
+
 ## 1.0.0 — 2026-09-02
 
 First packaged release. Derived from the single-file `quality-pass` personal skill, with these changes:
