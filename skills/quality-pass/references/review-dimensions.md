@@ -1,6 +1,6 @@
 # Review dimensions — what each reviewer hunts for
 
-Every finding needs `file:line` (or a measured number from a build/profile). "Looks suspicious" is not a finding. Each reviewer reports in the contract at the bottom of this file.
+Every claim needs `file:line` (or a measured number), a stable symbol/contract anchor, and a verification record. Suspected problems stay separate from demonstrated actionable defects. Respect the supplied base/paths/feature and pass mode; follow affected callers, tests, authorization boundaries, and contracts beyond the diff. Report coverage limits explicitly. Each reviewer uses the contract below.
 
 ## 1. Slop & honesty
 
@@ -74,12 +74,19 @@ Each reviewer returns exactly this shape, nothing else:
 # <Dimension> review — <repo/path>
 
 Scanned: <dirs/files/globs actually read>   Not scanned: <what was skipped and why>
+Scope/mode: <base, reviewed commit, selected files, quick/standard/full, affected boundaries>
 
 ## Findings (highest severity first)
 
 ### [CRITICAL|HIGH|MEDIUM|LOW] <one-line title>
+- ID/anchor: <existing QP-ID if known; otherwise stable dimension:file:symbol/contract anchor for coordinator assignment>
 - Where: path/to/file.ext:LINE (more locations on further lines)
 - Evidence: <quoted code, measured size, or query count — not a paraphrase>
+- Verification: suspected | demonstrated | rejected
+- Reproduction: <concrete safe local steps, or precisely what remains untested>
+- Validation commands: <repeatable commands and whether each was executed>
+- Observed vs expected: <actual result and required behavior; never invent an execution>
+- Related files: <affected callers, tests, authorization/contracts/configuration to watch>
 - Impact: <who is affected and how>
 - Fix (one line): <smallest change that resolves it>
 - Confidence: certain | likely | speculative

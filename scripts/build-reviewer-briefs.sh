@@ -9,7 +9,7 @@ CHECK=0; [ "${1:-}" = "--check" ] && CHECK=1
 gen() {
   echo "# Reviewer briefs (generated from agents/ — edit there, then run scripts/build-reviewer-briefs.sh)"
   echo
-  echo "Use these as the system prompt / task for one read-only subagent or fresh session per dimension when the Claude Code agents are not available. Give each reviewer the repo path and nothing else."
+  echo "Use these as the task for one read-only reviewer or fresh session per selected dimension. Supply the repo path, reviewed commit, base/selected files, quick/standard/full mode, affected boundaries, and exclusions. Quick selects bugs/security; standard/full select all six."
   echo
   for f in "$ROOT"/agents/qp-*.md; do
     name="$(sed -n 's/^name: *//p' "$f" | head -1)"

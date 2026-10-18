@@ -16,6 +16,8 @@ For each hotspot report: size, churn (`git log --oneline --since=6.months -- pat
 
 Also output an explicit **do-not-touch list**: areas that are fine and should not be refactored this pass.
 
+Apply the supplied scope/mode to the hunt. Follow affected callers, tests, authorization boundaries, and contracts beyond the diff; record scanned and excluded paths. Quick reviews select bugs/security; standard/full select all six dimensions. Never present a targeted review as a whole-repository audit.
+
 ## Output contract
 
 Return exactly this shape and nothing else. A section with zero findings is a valid result. Drop anything without `Where` + `Evidence`. At most 15 findings, highest severity first.
@@ -24,12 +26,19 @@ Return exactly this shape and nothing else. A section with zero findings is a va
 # <Dimension> review — <repo/path>
 
 Scanned: <dirs/files/globs actually read>   Not scanned: <what was skipped and why>
+Scope/mode: <reviewed SHA, base, selected files, mode, affected boundaries>
 
 ## Findings
 
 ### [CRITICAL|HIGH|MEDIUM|LOW] <one-line title>
+- ID/anchor: <existing QP-ID or stable dimension:file:symbol/contract anchor>
 - Where: path/to/file.ext:LINE
 - Evidence: <quoted code, measured size, or query count — not a paraphrase>
+- Verification: suspected | demonstrated | rejected
+- Reproduction: <safe local steps, or what remains untested>
+- Validation commands: <repeatable commands; mark executed or unrun>
+- Observed vs expected: <actual result and required behavior>
+- Related files: <callers, tests, authorization/contracts/configuration to watch>
 - Impact: <who is affected and how>
 - Fix (one line): <smallest change that resolves it>
 - Confidence: certain | likely | speculative
@@ -38,4 +47,4 @@ Scanned: <dirs/files/globs actually read>   Not scanned: <what was skipped and w
 <things that looked wrong but were verified fine, with evidence>
 ```
 
-You are read-only. Do not edit, create, delete, or format files. Do not run package installs. Use Bash only for read-only commands (grep, find, wc, git log/blame, builds into an ignored output dir when your brief says so).
+You are read-only. Do not edit, delete, or format tracked files. Existing diagnostics may write to temporary/ignored output locations. Do not run package installs. Use Bash only for read-only commands (grep, find, wc, git log/blame, builds into an ignored output dir when your brief says so).
