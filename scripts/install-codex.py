@@ -69,6 +69,7 @@ def install(name, target, copy):
                 path.chmod(0o755)
         backup = Path(temporary) / "previous"
         if existing:
+            # rename() moves an own-link itself, never the checkout it points to.
             destination.rename(backup)
         try:
             staged.rename(destination)

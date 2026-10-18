@@ -61,6 +61,7 @@ def write_json(path, value):
 
 
 def contained(root, relative):
+    root = Path(root).resolve()
     path = (root / relative).resolve()
     if path != root and root not in path.parents:
         raise ValueError(f"Path escapes repository: {relative}")

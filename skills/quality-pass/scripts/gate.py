@@ -31,7 +31,16 @@ def walk_manifests(root):
     return files
 
 
+def is_dotnet_test_project(path):
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError):
+        return False
+    return bool(re.search(r"Microsoft\.NET\.Test\.Sdk|<IsTestProject>\s*true\s*</IsTestProject>|Sdk=\"MSTest\.Sdk", text, re.IGNORECASE))
+
+
 def discover(root, projects, timeout):
+    root = Path(root).resolve()
     files = []
     for selection in projects or ["."]:
         path = contained(root, selection)
@@ -49,13 +58,15 @@ def discover(root, projects, timeout):
             gates.append({"id": f"{path.relative_to(root).as_posix()}:{name}", "cwd": cwd, "command": command, "timeout": float(timeout),
                           "report": report, "optional": optional, "kind": kind, "requires": requires or []})
 
-    members = set()
+    members, solution_members = set(), {}
     for path in files:
         if path.suffix == ".sln":
             refs = re.findall(r'"([^"\n]+\.(?:cs|fs|vb)proj)"', path.read_text(encoding="utf-8-sig"))
-            members.update((path.parent / ref.replace("\\", "/")).resolve() for ref in refs)
+            solution_members[path] = {(path.parent / ref.replace("\\", "/")).resolve() for ref in refs}
         elif path.suffix == ".slnx":
-            members.update((path.parent / node.attrib["Path"].replace("\\", "/")).resolve() for node in ET.parse(path).iter("Project") if "Path" in node.attrib)
+            solution_members[path] = {(path.parent / node.attrib["Path"].replace("\\", "/")).resolve() for node in ET.parse(path).iter("Project") if "Path" in node.attrib}
+    for refs in solution_members.values():
+        members.update(refs)
     for path in files:
         directory = path.parent
         if path.name == "package.json":
@@ -91,6 +102,10 @@ def discover(root, projects, timeout):
             if path.resolve() in members:
                 continue
             add(path, "build", ["dotnet", "build", path.name, "--nologo"])
+            # Application projects produce no TRX; only attach a structured test gate where tests exist.
+            tests = solution_members[path] if path in solution_members else {path}
+            if not any(is_dotnet_test_project(member) for member in tests):
+                continue
             add(path, "test", ["dotnet", "test", path.name, "--nologo", "--no-build", "--logger", "trx", "--results-directory", "{report_dir}"],
                 {"format": "trx", "path": "{report_dir}/*.trx"}, kind="test")
         elif path.name == "Cargo.toml":
@@ -265,6 +280,31 @@ def stop_process(process):
     process.wait()
 
 
+def find_bash():
+    bash = shutil.which("bash")
+    if os.name != "nt":
+        return bash or "bash"
+    system = Path(os.environ.get("SystemRoot", r"C:\Windows")).resolve()
+    if bash and system not in Path(bash).resolve().parents:
+        return bash
+    # System32\bash.exe is the WSL launcher; prefer Git for Windows' bash.
+    candidates = []
+    git_exe = shutil.which("git")
+    if git_exe:
+        candidates += [Path(git_exe).resolve().parents[1] / "bin/bash.exe", Path(git_exe).resolve().parents[1] / "usr/bin/bash.exe"]
+    for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramW6432"), os.environ.get("LOCALAPPDATA")):
+        if base:
+            candidates += [Path(base) / "Git/bin/bash.exe", Path(base) / "Programs/Git/bin/bash.exe"]
+    return next((str(c) for c in candidates if c.is_file()), bash or "bash")
+
+
+def locate(tool, cwd):
+    # Path-like commands run relative to the gate cwd, not the runner's directory.
+    if os.path.isabs(tool) or "/" in tool or (os.sep in tool):
+        return shutil.which(str(Path(tool) if os.path.isabs(tool) else cwd / tool))
+    return shutil.which(tool)
+
+
 def run_gate(root, gate, directory, index):
     log = directory / f"{index}.log"
     report_dir = directory / f"{index}-reports"
@@ -275,9 +315,10 @@ def run_gate(root, gate, directory, index):
             value = value.replace("{" + key + "}", replacement)
         return value
     command = gate["command"]
-    argv = ["bash", "-o", "pipefail", "-c", expand(command)] if isinstance(command, str) else [expand(part) for part in command]
+    argv = [find_bash(), "-o", "pipefail", "-c", expand(command)] if isinstance(command, str) else [expand(part) for part in command]
+    cwd = root / gate["cwd"]
     if os.name == "nt" and not isinstance(command, str):
-        tool = shutil.which(argv[0])
+        tool = locate(argv[0], cwd)
         if tool and tool.lower().endswith((".cmd", ".bat")):
             argv = [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/s", "/c", subprocess.list2cmdline(argv)]
     result = {"id": gate["id"], "command": command, "cwd": gate["cwd"], "log": str(log), "optional": gate["optional"], "evidence": None}
@@ -292,13 +333,13 @@ def run_gate(root, gate, directory, index):
         for path in glob.glob(str(pattern)):
             stat = Path(path).stat()
             before[path] = (stat.st_mtime_ns, stat.st_size, stat.st_ino)
-    missing = [tool for tool in [argv[0], *gate["requires"]] if shutil.which(tool) is None]
+    missing = [tool for tool in [argv[0], *gate["requires"]] if locate(tool, cwd) is None]
     if missing:
         result.update(status="SKIP" if gate["optional"] else "MISSING_TOOL", exit_code=None, reason="Missing tool: " + ", ".join(missing))
         log.write_text(result["reason"] + "\n", encoding="utf-8")
     else:
         with log.open("w", encoding="utf-8") as stream:
-            process = subprocess.Popen(argv, cwd=root / gate["cwd"], stdout=stream, stderr=subprocess.STDOUT, env=dict(os.environ, CI="true"),
+            process = subprocess.Popen(argv, cwd=cwd, stdout=stream, stderr=subprocess.STDOUT, env=dict(os.environ, CI="true"),
                 start_new_session=os.name != "nt", creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
             try:
                 code = process.wait(timeout=gate["timeout"])

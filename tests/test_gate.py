@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -127,15 +128,32 @@ class GateTests(unittest.TestCase):
     def test_nested_dotnet_paths_and_multiple_projects(self):
         project = self.root / "services/with spaces"
         project.mkdir(parents=True)
-        for name in ("A.csproj", "B.csproj"):
-            (project / name).write_text("<Project />")
+        (project / "A.csproj").write_text("<Project />")
+        (project / "B.csproj").write_text('<Project><ItemGroup><PackageReference Include="Microsoft.NET.Test.Sdk" /></ItemGroup></Project>')
         gates = gate.discover(self.root, [], 5)
-        self.assertEqual(len(gates), 4)
-        self.assertEqual(len({g["id"] for g in gates}), 4)
+        self.assertEqual(len(gates), 3)
+        self.assertEqual(len({g["id"] for g in gates}), 3)
         self.assertEqual(gates[0]["cwd"], "services/with spaces")
         self.assertIn("A.csproj", gates[0]["command"])
-        self.assertIn("--results-directory", gates[1]["command"])
+        self.assertIn("--results-directory", gates[2]["command"])
         self.assertEqual(len(gate.discover(self.root, ["services/with spaces/B.csproj"], 5)), 2)
+
+    def test_dotnet_application_projects_get_no_structured_test_gate(self):
+        (self.root / "Api.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk.Web" />')
+        (self.root / "App.sln").write_text('Project("guid") = "Api", "Api.csproj", "guid"\n')
+        gates = gate.discover(self.root, [], 5)
+        self.assertEqual([g["id"] for g in gates], ["App.sln:build"])
+
+    def test_relative_executable_resolves_against_gate_cwd(self):
+        script = self.root / "web/scripts/check.py"
+        script.parent.mkdir(parents=True)
+        script.write_text("#!/usr/bin/env python3\nprint('checked')\n")
+        script.chmod(0o755)
+        if os.name == "nt":
+            self.skipTest("Shebang scripts are not directly executable on Windows")
+        self.config([{"id": "check", "cwd": "web", "command": ["./scripts/check.py"]}])
+        self.run_gate()
+        self.assertEqual(self.latest()["gates"][0]["status"], "PASS")
 
     def test_nested_node_uses_workspace_manager_and_ignores_dependencies(self):
         (self.root / "package.json").write_text('{"packageManager":"pnpm@10.0.0"}')
@@ -206,7 +224,7 @@ class GateTests(unittest.TestCase):
         self.run_gate("--project", "README.md", expected=2)
 
     def test_solution_members_are_not_duplicated(self):
-        (self.root / "Tests.csproj").write_text("<Project />")
+        (self.root / "Tests.csproj").write_text("<Project><PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup></Project>")
         (self.root / "App.sln").write_text('Project("guid") = "Tests", "Tests.csproj", "guid"\n')
         gates = gate.discover(self.root, [], 5)
         self.assertEqual(len(gates), 2)

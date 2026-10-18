@@ -60,7 +60,7 @@ def write_package(name, destination):
 
 def validate_archive(archive_path):
     with tempfile.TemporaryDirectory(prefix="quality-pass-isolation-") as temp:
-        root = Path(temp)
+        root = Path(temp).resolve()
         with zipfile.ZipFile(archive_path) as archive:
             for name in archive.namelist():
                 target = (root / name).resolve()

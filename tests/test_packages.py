@@ -80,7 +80,17 @@ class PackageTests(unittest.TestCase):
         except OSError:
             self.skipTest("Symlink privilege unavailable")
         self.install("--skill", "quality-pass-gate", expected=1)
-        self.assertEqual(path.resolve(), unrelated)
+        self.assertEqual(path.resolve(), unrelated.resolve())
+
+    def test_selected_skill_replaces_own_link_with_standalone_copy(self):
+        self.install()
+        path = self.root / "installed/quality-pass-gate"
+        if not path.is_symlink():
+            self.skipTest("Symlink privilege unavailable")
+        self.install("--skill", "quality-pass-gate")
+        self.assertFalse(path.is_symlink())
+        self.assertTrue((path / ".quality-pass-package.json").is_file())
+        self.assertTrue((skill_packages.SKILLS / "quality-pass-gate/SKILL.md").is_file())
 
     def test_unknown_skill_and_missing_argument_fail_cleanly(self):
         self.install("--skill", "../outside", expected=1)

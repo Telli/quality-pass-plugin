@@ -8,6 +8,7 @@
 - Added stable finding IDs, reproducible evidence records, local progress/decision history, stale-approval invalidation, and gated completion. Regression tests accompany bug fixes.
 - Generate deterministic self-contained ZIPs validated in isolation. Single-skill installation uses complete standalone copies and preserves modified installations.
 - Portable Python gate and installer cores, Bash/PowerShell entry points, recursive project discovery with explicit .NET targets, timeouts, and distinct missing-tool/optional-skip/zero-test outcomes.
+- .NET discovery attaches structured test gates only to test projects; relative argv executables resolve against the gate `cwd`; path containment compares resolved roots (Windows short names, macOS `/private` temp dirs); legacy shell gates on Windows use Git Bash rather than the WSL launcher.
 - Added regression tests and Linux/Windows CI coverage. Python 3.9+ is now required for the executable tools; legacy Bash gate commands remain supported.
 
 ## 1.0.0 — 2026-09-02
