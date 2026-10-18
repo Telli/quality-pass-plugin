@@ -7,6 +7,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "skills/quality-pass/scripts"
@@ -125,7 +126,8 @@ class GateTests(unittest.TestCase):
         self.run_gate()
         self.assertEqual(len(list((self.root / ".quality-pass/logs").iterdir())), 2)
 
-    def test_nested_dotnet_paths_and_multiple_projects(self):
+    @patch.object(gate, "evaluated_test_project", return_value=None)
+    def test_nested_dotnet_paths_and_multiple_projects(self, _evaluated):
         project = self.root / "services/with spaces"
         project.mkdir(parents=True)
         (project / "A.csproj").write_text("<Project />")
@@ -138,7 +140,8 @@ class GateTests(unittest.TestCase):
         self.assertIn("--results-directory", gates[2]["command"])
         self.assertEqual(len(gate.discover(self.root, ["services/with spaces/B.csproj"], 5)), 2)
 
-    def test_dotnet_application_projects_get_no_structured_test_gate(self):
+    @patch.object(gate, "evaluated_test_project", return_value=None)
+    def test_dotnet_application_projects_get_no_structured_test_gate(self, _evaluated):
         (self.root / "Api.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk.Web" />')
         (self.root / "App.sln").write_text('Project("guid") = "Api", "Api.csproj", "guid"\n')
         gates = gate.discover(self.root, [], 5)
@@ -155,9 +158,18 @@ class GateTests(unittest.TestCase):
         (self.root / "Imported/Imported.csproj").write_text("<Project><Import Project='../test.props' /></Project>")
         (self.root / "Dynamic").mkdir()
         (self.root / "Dynamic/Dynamic.csproj").write_text('<Project><Import Project="$(RepoRoot)/eng/x.props" /></Project>')
-        ids = {g["id"] for g in gate.discover(self.root, [], 5)}
+        with patch.object(gate, "evaluated_test_project", return_value=None):
+            ids = {g["id"] for g in gate.discover(self.root, [], 5)}
         for name in ("Quoted/Quoted", "tests/Inherited", "Imported/Imported", "Dynamic/Dynamic"):
             self.assertIn(f"{name}.csproj:test", ids)
+
+    def test_evaluated_msbuild_property_overrides_text_markers(self):
+        (self.root / "shared.props").write_text("<Project><ItemGroup Condition=\"'$(IsTest)'=='true'\"><PackageReference Include=\"Microsoft.NET.Test.Sdk\" /></ItemGroup></Project>")
+        (self.root / "Api.csproj").write_text('<Project><Import Project="shared.props" /></Project>')
+        with patch.object(gate, "evaluated_test_project", return_value=False):
+            self.assertEqual([g["id"] for g in gate.discover(self.root, [], 5)], ["Api.csproj:build"])
+        with patch.object(gate, "evaluated_test_project", return_value=None):
+            self.assertIn("Api.csproj:test", [g["id"] for g in gate.discover(self.root, [], 5)])
 
     def test_relative_executable_resolves_against_gate_cwd(self):
         script = self.root / "web/scripts/check.py"
@@ -238,7 +250,8 @@ class GateTests(unittest.TestCase):
         (self.root / "README.md").write_text("not a project")
         self.run_gate("--project", "README.md", expected=2)
 
-    def test_solution_members_are_not_duplicated(self):
+    @patch.object(gate, "evaluated_test_project", return_value=None)
+    def test_solution_members_are_not_duplicated(self, _evaluated):
         (self.root / "Tests.csproj").write_text("<Project><PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup></Project>")
         (self.root / "App.sln").write_text('Project("guid") = "Tests", "Tests.csproj", "guid"\n')
         gates = gate.discover(self.root, [], 5)

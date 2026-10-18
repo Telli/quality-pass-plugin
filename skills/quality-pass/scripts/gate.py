@@ -34,8 +34,28 @@ def walk_manifests(root):
 TEST_MARKERS = re.compile(r"Microsoft\.NET\.Test\.Sdk|MSTest\.Sdk|<IsTestProject>\s*true\s*</IsTestProject>", re.IGNORECASE)
 
 
+def evaluated_test_project(path):
+    """Ask MSBuild (conditions applied, no restore needed); None when the SDK can't answer."""
+    if not shutil.which("dotnet"):
+        return None
+    try:
+        result = subprocess.run(["dotnet", "msbuild", path.name, "-nologo", "-getProperty:IsTestProject", "-getItem:PackageReference"],
+                                cwd=path.parent, capture_output=True, text=True, timeout=120)
+        data = json.loads(result.stdout) if result.returncode == 0 else None
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    # Microsoft.NET.Test.Sdk only sets IsTestProject after restore, so its evaluated reference counts too.
+    references = {str(item.get("Identity", "")).lower() for item in data.get("Items", {}).get("PackageReference", []) if isinstance(item, dict)}
+    return data.get("Properties", {}).get("IsTestProject", "").lower() == "true" or "microsoft.net.test.sdk" in references
+
+
 def is_dotnet_test_project(path, root):
-    """Conservative: only a project with no test markers anywhere it imports is treated as non-test."""
+    """Prefer evaluated MSBuild; otherwise only a project with no test markers anywhere it imports is non-test."""
+    evaluated = evaluated_test_project(path)
+    if evaluated is not None:
+        return evaluated
     sources = [path] + [d / name for d in [path.parent, *path.parent.parents] if d == root or root in d.parents
                         for name in ("Directory.Build.props", "Directory.Build.targets") if (d / name).is_file()]
     seen = set()
