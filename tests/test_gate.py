@@ -144,6 +144,21 @@ class GateTests(unittest.TestCase):
         gates = gate.discover(self.root, [], 5)
         self.assertEqual([g["id"] for g in gates], ["App.sln:build"])
 
+    def test_dotnet_test_markers_from_sdk_quotes_and_imports_are_detected(self):
+        (self.root / "Quoted").mkdir()
+        (self.root / "Quoted/Quoted.csproj").write_text("<Project Sdk='MSTest.Sdk/3.6.1' />")
+        (self.root / "tests").mkdir()
+        (self.root / "tests/Directory.Build.props").write_text("<Project><PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup></Project>")
+        (self.root / "tests/Inherited.csproj").write_text("<Project />")
+        (self.root / "Imported").mkdir()
+        (self.root / "test.props").write_text('<Project><ItemGroup><PackageReference Include="Microsoft.NET.Test.Sdk" /></ItemGroup></Project>')
+        (self.root / "Imported/Imported.csproj").write_text("<Project><Import Project='../test.props' /></Project>")
+        (self.root / "Dynamic").mkdir()
+        (self.root / "Dynamic/Dynamic.csproj").write_text('<Project><Import Project="$(RepoRoot)/eng/x.props" /></Project>')
+        ids = {g["id"] for g in gate.discover(self.root, [], 5)}
+        for name in ("Quoted/Quoted", "tests/Inherited", "Imported/Imported", "Dynamic/Dynamic"):
+            self.assertIn(f"{name}.csproj:test", ids)
+
     def test_relative_executable_resolves_against_gate_cwd(self):
         script = self.root / "web/scripts/check.py"
         script.parent.mkdir(parents=True)

@@ -31,12 +31,30 @@ def walk_manifests(root):
     return files
 
 
-def is_dotnet_test_project(path):
-    try:
-        text = path.read_text(encoding="utf-8-sig")
-    except (OSError, UnicodeDecodeError):
-        return False
-    return bool(re.search(r"Microsoft\.NET\.Test\.Sdk|<IsTestProject>\s*true\s*</IsTestProject>|Sdk=\"MSTest\.Sdk", text, re.IGNORECASE))
+TEST_MARKERS = re.compile(r"Microsoft\.NET\.Test\.Sdk|MSTest\.Sdk|<IsTestProject>\s*true\s*</IsTestProject>", re.IGNORECASE)
+
+
+def is_dotnet_test_project(path, root):
+    """Conservative: only a project with no test markers anywhere it imports is treated as non-test."""
+    sources = [path] + [d / name for d in [path.parent, *path.parent.parents] if d == root or root in d.parents
+                        for name in ("Directory.Build.props", "Directory.Build.targets") if (d / name).is_file()]
+    seen = set()
+    while sources:
+        source = sources.pop()
+        if source in seen:
+            continue
+        seen.add(source)
+        try:
+            text = source.read_text(encoding="utf-8-sig")
+        except (OSError, UnicodeDecodeError):
+            return True
+        if TEST_MARKERS.search(text):
+            return True
+        for target in re.findall(r"<Import\b[^>]*\bProject\s*=\s*[\"']([^\"']+)[\"']", text, re.IGNORECASE):
+            if "$(" in target or "*" in target:
+                return True  # unresolvable import; keep the test gate
+            sources.append((source.parent / target.replace("\\", "/")).resolve())
+    return False
 
 
 def discover(root, projects, timeout):
@@ -104,7 +122,7 @@ def discover(root, projects, timeout):
             add(path, "build", ["dotnet", "build", path.name, "--nologo"])
             # Application projects produce no TRX; only attach a structured test gate where tests exist.
             tests = solution_members[path] if path in solution_members else {path}
-            if not any(is_dotnet_test_project(member) for member in tests):
+            if not any(is_dotnet_test_project(member, root) for member in tests):
                 continue
             add(path, "test", ["dotnet", "test", path.name, "--nologo", "--no-build", "--logger", "trx", "--results-directory", "{report_dir}"],
                 {"format": "trx", "path": "{report_dir}/*.trx"}, kind="test")
