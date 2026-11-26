@@ -110,9 +110,10 @@ def install_claude(source, explicit):
         message = "claude CLI not found; run:\n  " + "\n  ".join(" ".join(c) for c in commands)
         return [message] if explicit else (print("skip claude: " + message) or [])
     code, output = run([claude] + commands[0][1:])
+    if code != 0:
+        # Older CLIs refuse to re-point a marketplace name at a different source.
+        return [f"claude marketplace add failed; to switch sources run `claude plugin marketplace remove {MARKETPLACE}` and re-run"]
     already = "already" in output.lower()
-    if code != 0 and not already:
-        return ["claude marketplace add failed"]
     if already and run([claude, "plugin", "marketplace", "update", MARKETPLACE])[0] != 0:
         return ["claude marketplace update failed"]
     code, output = run([claude] + commands[1][1:])
@@ -125,8 +126,9 @@ def install_claude(source, explicit):
 
 def detected(home):
     found = set()
+    # Antigravity keeps its profile under ~/.gemini, so that directory alone does not mean Gemini CLI.
     for host, marker, cli in (("claude", ".claude", "claude"), ("codex", ".codex", "codex"),
-                              ("gemini", ".gemini", "gemini"), ("antigravity", ".gemini/antigravity-cli", "agy")):
+                              ("gemini", ".gemini/settings.json", "gemini"), ("antigravity", ".gemini/antigravity-cli", "agy")):
         if shutil.which(cli) or (home / marker).exists():
             found.add(host)
     return found
@@ -150,19 +152,22 @@ def main():
         print("No supported host detected; pass --host claude|codex|gemini|antigravity|all", file=sys.stderr)
         return 2
     shared = args.skills_target or home / ".agents/skills"
+    # Gemini/Antigravity let an activated skill read only its own directory, so linked skills that
+    # reference ../quality-pass cannot load their background there; install standalone copies.
+    copy = args.copy or bool(hosts & {"gemini", "antigravity"})
     errors, done = [], set()
     if "claude" in hosts:
         source = str(ROOT) if args.claude_source == "local" else args.claude_source
         errors += install_claude(source, "claude" in explicit or "all" in explicit)
     if "codex" in hosts:
-        errors += install_skills(shared, args.copy, done)
+        errors += install_skills(shared, copy, done)
         errors += install_files(host_files("codex/agents/"), codex_home / "agents")
     if "gemini" in hosts:
-        errors += install_skills(shared, args.copy, done)
+        errors += install_skills(shared, copy, done)
         errors += install_files(host_files("gemini/agents/"), home / ".gemini/agents")
         errors += install_files(host_files("gemini/commands/quality-pass/"), home / ".gemini/commands/quality-pass")
     if "antigravity" in hosts:
-        errors += install_skills(home / ".gemini/antigravity-cli/skills", args.copy, done)
+        errors += install_skills(home / ".gemini/antigravity-cli/skills", copy, done)
     for error in errors:
         print(f"install: {error}", file=sys.stderr)
     print("Installed for: " + ", ".join(sorted(hosts)) + ("" if not errors else " (with errors above)"))

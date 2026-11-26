@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,6 +20,7 @@ def load(name, path):
 
 
 generator = load("build_host_agents", ROOT / "scripts/build-host-agents.py")
+installer = load("cross_host_installer", ROOT / "scripts/install.py")
 GEMINI_FIELDS = {"kind", "name", "description", "display_name", "tools", "mcp_servers", "model", "temperature", "max_turns", "timeout_mins"}
 GEMINI_TOOLS = {"read_file", "read_many_files", "grep_search", "glob", "list_directory", "run_shell_command"}
 
@@ -71,6 +73,18 @@ class HostAgentTests(unittest.TestCase):
                 else:
                     self.assertIn("{{args}}", data["prompt"])
 
+    def test_quoted_tier_keeps_host_pins(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "qp-x.md"
+            path.write_text('---\nname: qp-x\ndescription: d\nmodel: "sonnet"\neffort: \'high\'\n---\nbody\n')
+            agent = generator.parse_agent(path)
+        self.assertEqual((agent["model"], agent["effort"]), ("sonnet", "high"))
+
+    def test_writer_emits_lf_bytes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            generator.write_files({"a/b.toml": "x = 1\ny = 2\n"}, Path(temp))
+            self.assertEqual((Path(temp) / "a/b.toml").read_bytes(), b"x = 1\ny = 2\n")
+
     def test_null_model_inherits_session_model(self):
         agent = {"name": "qp-x", "description": "d", "model": "opus", "effort": "high", "body": "b\n"}
         models = {"codex": {"opus": None, "effort": {}}, "gemini": {"opus": None}}
@@ -85,11 +99,11 @@ class CrossHostInstallTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.home = Path(self.temp.name)
 
-    def install(self, *hosts, expected=0):
-        args = [a for h in hosts for a in ("--host", h)]
+    def install(self, *hosts, expected=0, copy=True):
+        args = [a for h in hosts for a in ("--host", h)] + (["--copy"] if copy else [])
         env = dict(os.environ)
         env.pop("CODEX_HOME", None)
-        result = subprocess.run([sys.executable, str(ROOT / "scripts/install.py"), "--home", str(self.home), "--copy", *args],
+        result = subprocess.run([sys.executable, str(ROOT / "scripts/install.py"), "--home", str(self.home), *args],
                                 capture_output=True, text=True, env=env)
         self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
         return result
@@ -103,6 +117,23 @@ class CrossHostInstallTests(unittest.TestCase):
         self.assertTrue((self.home / ".gemini/agents/qp-bug-hunter.md").is_file())
         self.assertTrue((self.home / ".gemini/commands/quality-pass/review.toml").is_file())
         self.install("codex", "gemini", "antigravity")
+
+    def test_gemini_gets_standalone_skills_and_codex_links(self):
+        self.install("codex", copy=False)
+        skill = self.home / ".agents/skills/quality-pass-review"
+        if not skill.is_symlink():
+            self.skipTest("Symlink privilege unavailable")
+        self.install("codex", "gemini", copy=False)
+        self.assertFalse(skill.is_symlink())
+        self.assertTrue((skill / "references/quality-pass.md").is_file())
+        self.assertNotIn("../quality-pass/", (skill / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_antigravity_profile_alone_does_not_select_gemini(self):
+        (self.home / ".gemini/antigravity-cli").mkdir(parents=True)
+        with unittest.mock.patch.object(installer.shutil, "which", return_value=None):
+            self.assertEqual(installer.detected(self.home), {"antigravity"})
+            (self.home / ".gemini/settings.json").write_text("{}")
+            self.assertEqual(installer.detected(self.home), {"antigravity", "gemini"})
 
     def test_modified_and_unrelated_agent_files_are_preserved(self):
         agents = self.home / ".gemini/agents"

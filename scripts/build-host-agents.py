@@ -32,7 +32,7 @@ def parse_agent(path):
     fields = {}
     for line in header.splitlines():
         key, _, value = line.partition(":")
-        fields[key.strip()] = value.strip()
+        fields[key.strip()] = value.strip().strip("\"'")
     for key in ("name", "description", "model", "effort"):
         if not fields.get(key):
             raise ValueError(f"{path.name}: frontmatter needs {key}")
@@ -90,6 +90,14 @@ def generate():
     return files
 
 
+def write_files(files, root):
+    for relative, content in files.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Bytes keep LF endings on every OS; Path.write_text(newline=) needs Python 3.10+.
+        path.write_bytes(content.encode("utf-8"))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="fail if generated files are stale")
@@ -107,10 +115,7 @@ def main():
         return 0
     for relative in sorted(existing - set(files)):
         (HOSTS / relative).unlink()
-    for relative, content in files.items():
-        path = HOSTS / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8", newline="\n")
+    write_files(files, HOSTS)
     print(f"wrote {len(files)} host files under {HOSTS}")
     return 0
 

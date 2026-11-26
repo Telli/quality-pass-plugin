@@ -49,7 +49,7 @@ Installs at user level, so it is available in all projects:
 | Gemini CLI | skills → `~/.agents/skills`, subagents → `~/.gemini/agents`, commands → `~/.gemini/commands/quality-pass` |
 | Antigravity CLI | skills → `~/.gemini/antigravity-cli/skills` |
 
-Skills are linked to the checkout by default, so `git -C ~/.quality-pass-plugin pull` updates Codex and Gemini in place (re-run the installer to pick up new agents; it also runs `claude plugin update`). Use `--copy` for standalone copies. Files you modified and unrelated files are preserved and reported, never overwritten. Windows: `scripts/install.ps1`. Python 3.9+, no third-party dependencies. Restart open sessions afterwards.
+For Codex alone, skills are linked to the checkout, so `git -C ~/.quality-pass-plugin pull` updates them in place. Gemini and Antigravity only let a skill read its own directory, so when either is selected the shared skills are installed as standalone copies (also available with `--copy`); after a `git pull`, re-run the installer to refresh copies and agents (it also runs `claude plugin update`). Files you modified and unrelated files are preserved and reported, never overwritten. Windows: `scripts/install.ps1`. Python 3.9+, no third-party dependencies. Restart open sessions afterwards.
 
 ### Claude Code only
 
