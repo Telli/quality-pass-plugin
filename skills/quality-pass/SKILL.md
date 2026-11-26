@@ -3,8 +3,8 @@ name: quality-pass
 description: Use when asked to review and improve an existing application end-to-end — "clean this up", "remove AI slop", "review for improvements", "is the architecture right", pre-launch hardening, or an inherited/AI-generated codebase that needs a bug hunt, security check, performance pass, dead-code removal, or structural refactoring. Also use when a partial pass (review only, dead-code only) needs the full method as background.
 license: MIT
 metadata:
-  version: "1.1.0"
-  runtimes: "claude-code, codex, any agent-skills host"
+  version: "1.2.0"
+  runtimes: "claude-code, codex, gemini-cli, antigravity-cli, any agent-skills host"
 ---
 
 # Quality Pass
@@ -35,7 +35,10 @@ Run the mode's reviewers read-only, each covering a dimension from `references/r
 slop & honesty · bugs · security & data integrity · performance · dead code · architecture.
 
 - Claude Code: use this plugin's agents, which load as `quality-pass:qp-slop-reviewer`, `quality-pass:qp-bug-hunter`, `quality-pass:qp-security-reviewer`, `quality-pass:qp-perf-reviewer`, `quality-pass:qp-dead-code-reviewer`, `quality-pass:qp-architecture-reviewer`. Give each the repo path, reviewed commit, seed scope, mode, affected boundaries, and exclusions.
-- Other runtimes: spawn subagents or fresh sessions with the briefs in `references/reviewer-briefs.md`. If parallelism is unavailable, run them sequentially in fresh contexts; never run all six in one context.
+- Codex: when installed, use the custom agents `qp_slop_reviewer`, `qp_bug_hunter`, `qp_security_reviewer`, `qp_perf_reviewer`, `qp_dead_code_reviewer`, `qp_architecture_reviewer` (one subagent each, in parallel).
+- Gemini CLI: when installed, delegate to the subagents `qp-slop-reviewer`, `qp-bug-hunter`, `qp-security-reviewer`, `qp-perf-reviewer`, `qp-dead-code-reviewer`, `qp-architecture-reviewer`.
+- Each reviewer agent pins a model tier for its host (deep reasoning for bugs, security, architecture; a faster model for slop, performance, dead code). If the user asks for a specific model, do not use the pinned agent (Codex gives its preset precedence over a spawn-time model); spawn a generic subagent with that model and the dimension's brief from `references/reviewer-briefs.md`. Gemini CLI's generic subagent always inherits the session model, so there ask the user to switch the session model (`/model`) first.
+- Other runtimes, or when those agents are not installed: spawn subagents or fresh sessions with the briefs in `references/reviewer-briefs.md`. If parallelism is unavailable, run them sequentially in fresh contexts; never run all six in one context.
 
 Then **you** verify every claim (rule 2), save its record with `scripts/review.py record`, and consolidate into [the report template](references/report-template.md). Include scope limits, stable IDs, reproduction/measured evidence, rejected claims (possibly none), and deliberately deferred work. Reuse unchanged saved decisions. Present the plan and **stop for approval before Phase 2** unless the user already granted it; record actual approval with `review.py approve`.
 

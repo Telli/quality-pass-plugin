@@ -1,0 +1,20 @@
+{
+  "_comment": "Reviewer model tiers per host. agents/qp-*.md is the source of truth: its Claude `model` alias picks the tier and its `effort` is carried over where the host supports it. Edit, then run `python scripts/build-host-agents.py`. Set a value to null to inherit the host's session model.",
+  "codex": {
+    "opus": "gpt-6.2-astra",
+    "sonnet": "gpt-6.2-sol",
+    "haiku": "gpt-6-luna",
+    "effort": {
+      "low": "low",
+      "medium": "medium",
+      "high": "high",
+      "xhigh": "xhigh",
+      "max": "max"
+    }
+  },
+  "gemini": {
+    "opus": "gemini-3.1-pro-preview",
+    "sonnet": "gemini-3.5-flash",
+    "haiku": "gemini-3.5-flash"
+  }
+}

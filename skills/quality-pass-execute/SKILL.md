@@ -3,7 +3,7 @@ name: quality-pass-execute
 description: Use when an approved quality-pass report (or a user-approved list of verified findings) exists and the fixes now need to be applied in phases with green gates and one commit per phase.
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   part-of: quality-pass
 ---
 

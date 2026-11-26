@@ -1,0 +1,3 @@
+# quality-pass generated file: edit agents/ or hosts/models.json, then run scripts/build-host-agents.py
+description = "Full quality pass: baseline, reviews, verify, plan, approval, gated fixes"
+prompt = "Activate the `quality-pass` skill (activate_skill) and follow it exactly, including its iron rules. For reviewer dimensions, delegate to the qp-* subagents when they are available. User request: {{args}}"

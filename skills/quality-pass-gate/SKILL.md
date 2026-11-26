@@ -3,7 +3,7 @@ name: quality-pass-gate
 description: Use when asked whether the build is green, before claiming a change is done, or before any commit during a quality pass — runs typecheck, lint, full tests, and the production build and reports the results verbatim.
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   part-of: quality-pass
 ---
 

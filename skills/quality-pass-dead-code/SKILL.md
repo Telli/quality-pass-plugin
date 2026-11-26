@@ -3,7 +3,7 @@ name: quality-pass-dead-code
 description: Use when removing unused files, exports, components, packages, or tests from a codebase — "delete dead code", "remove unused", "clean up leftovers" — or when a reviewer has produced a list of dead-code candidates that must be verified before deletion.
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   part-of: quality-pass
 ---
 
