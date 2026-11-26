@@ -88,7 +88,10 @@ def install_skills(target, copy, done):
     errors = []
     for name in sorted(p.name for p in skills_installer.SKILLS.iterdir() if p.is_dir()):
         try:
-            skills_installer.install(name, target, copy)
+            # A managed copy stays a copy (Gemini may rely on it even when only Codex is selected now).
+            existing = target / name
+            keep_copy = not existing.is_symlink() and existing.is_dir() and skills_installer.owned_copy(existing, name)
+            skills_installer.install(name, target, copy or keep_copy)
         except (ValueError, OSError) as error:
             errors.append(str(error))
     return errors
@@ -103,6 +106,21 @@ def run(command):
     return result.returncode, output
 
 
+def registered_source_matches(claude, source):
+    result = subprocess.run([claude, "plugin", "marketplace", "list", "--json"], capture_output=True, text=True)
+    try:
+        entries = json.loads(result.stdout)
+    except ValueError:
+        return False
+    for entry in entries if isinstance(entries, list) else []:
+        if entry.get("name") != MARKETPLACE:
+            continue
+        if entry.get("path"):
+            return Path(entry["path"]).resolve() == Path(source).expanduser().resolve()
+        return str(entry.get("repo", "")).lower() == source.lower()
+    return False
+
+
 def install_claude(source, explicit):
     claude = shutil.which("claude")
     commands = [["claude", "plugin", "marketplace", "add", source], ["claude", "plugin", "install", PLUGIN, "--scope", "user"]]
@@ -110,10 +128,11 @@ def install_claude(source, explicit):
         message = "claude CLI not found; run:\n  " + "\n  ".join(" ".join(c) for c in commands)
         return [message] if explicit else (print("skip claude: " + message) or [])
     code, output = run([claude] + commands[0][1:])
-    if code != 0:
-        # Older CLIs refuse to re-point a marketplace name at a different source.
-        return [f"claude marketplace add failed; to switch sources run `claude plugin marketplace remove {MARKETPLACE}` and re-run"]
     already = "already" in output.lower()
+    if code != 0:
+        # Some CLIs exit non-zero for any existing registration: continue only if it is this source.
+        if not already or not registered_source_matches(claude, source):
+            return [f"claude marketplace add failed; to switch sources run `claude plugin marketplace remove {MARKETPLACE}` and re-run"]
     if already and run([claude, "plugin", "marketplace", "update", MARKETPLACE])[0] != 0:
         return ["claude marketplace update failed"]
     code, output = run([claude] + commands[1][1:])

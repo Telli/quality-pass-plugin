@@ -128,6 +128,20 @@ class CrossHostInstallTests(unittest.TestCase):
         self.assertTrue((skill / "references/quality-pass.md").is_file())
         self.assertNotIn("../quality-pass/", (skill / "SKILL.md").read_text(encoding="utf-8"))
 
+    def test_fresh_gemini_install_uses_standalone_copies(self):
+        self.install("gemini", copy=False)
+        skill = self.home / ".agents/skills/quality-pass-review"
+        self.assertFalse(skill.is_symlink())
+        self.assertTrue((skill / ".quality-pass-package.json").is_file())
+        self.assertNotIn("../quality-pass/", (skill / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_codex_only_rerun_refreshes_managed_copies(self):
+        self.install("codex", "antigravity", copy=False)
+        skill = self.home / ".agents/skills/quality-pass-gate"
+        self.assertTrue((skill / ".quality-pass-package.json").is_file())
+        self.install("codex", copy=False)
+        self.assertFalse(skill.is_symlink())
+
     def test_antigravity_profile_alone_does_not_select_gemini(self):
         (self.home / ".gemini/antigravity-cli").mkdir(parents=True)
         with unittest.mock.patch.object(installer.shutil, "which", return_value=None):
@@ -162,6 +176,42 @@ class CrossHostInstallTests(unittest.TestCase):
         self.install("codex")
         self.assertFalse(stale.exists())
         self.assertIn("developer_instructions", target.read_text())
+
+
+class ClaudeSourceTests(unittest.TestCase):
+    def check(self, listing, source):
+        result = unittest.mock.Mock(stdout=json.dumps(listing))
+        with unittest.mock.patch.object(installer.subprocess, "run", return_value=result):
+            return installer.registered_source_matches("claude", source)
+
+    def test_same_source_duplicate_continues_and_different_source_fails(self):
+        github = [{"name": installer.MARKETPLACE, "source": "github", "repo": "Telli/quality-pass-plugin"}]
+        self.assertTrue(self.check(github, "telli/quality-pass-plugin"))
+        self.assertFalse(self.check(github, str(ROOT)))
+        local = [{"name": installer.MARKETPLACE, "source": "directory", "path": str(ROOT)}]
+        self.assertTrue(self.check(local, str(ROOT)))
+        self.assertFalse(self.check(local, "telli/quality-pass-plugin"))
+        self.assertFalse(self.check([], str(ROOT)))
+
+    def test_rerun_on_cli_that_rejects_duplicates_still_updates(self):
+        calls = []
+
+        def fake_run(command):
+            calls.append(command[1:])
+            if command[1:4] == ["plugin", "marketplace", "add"]:
+                return 1, f"Marketplace '{installer.MARKETPLACE}' is already installed"
+            if command[1:3] == ["plugin", "install"]:
+                return 0, "already installed"
+            return 0, ""
+        with unittest.mock.patch.object(installer.shutil, "which", return_value="claude"), \
+                unittest.mock.patch.object(installer, "run", side_effect=fake_run), \
+                unittest.mock.patch.object(installer, "registered_source_matches", return_value=True):
+            self.assertEqual(installer.install_claude("telli/quality-pass-plugin", True), [])
+        self.assertIn(["plugin", "update", installer.PLUGIN, "--scope", "user"], calls)
+        with unittest.mock.patch.object(installer.shutil, "which", return_value="claude"), \
+                unittest.mock.patch.object(installer, "run", side_effect=fake_run), \
+                unittest.mock.patch.object(installer, "registered_source_matches", return_value=False):
+            self.assertEqual(len(installer.install_claude("telli/quality-pass-plugin", True)), 1)
 
 
 class RetiredSymlinkTests(unittest.TestCase):
