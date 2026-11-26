@@ -164,6 +164,24 @@ class CrossHostInstallTests(unittest.TestCase):
         self.assertIn("developer_instructions", target.read_text())
 
 
+class RetiredSymlinkTests(unittest.TestCase):
+    def test_user_symlink_to_identical_copy_survives_retirement(self):
+        with tempfile.TemporaryDirectory() as temp:
+            target = Path(temp) / "agents"
+            installer.install_files({"qp_old.toml": "x = 1\n"}, target)
+            copy = Path(temp) / "mine.toml"
+            copy.write_text("x = 1\n")
+            (target / "qp_old.toml").unlink()
+            try:
+                (target / "qp_old.toml").symlink_to(copy)
+            except OSError:
+                self.skipTest("Symlink privilege unavailable")
+            installer.install_files({}, target)
+            self.assertTrue((target / "qp_old.toml").is_symlink())
+            installer.install_files({"qp_new.toml": "y = 2\n"}, target)
+            self.assertTrue((target / "qp_old.toml").is_symlink())
+
+
 def generator_digest(text):
     import hashlib
     return hashlib.sha256(text.encode()).hexdigest()

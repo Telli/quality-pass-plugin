@@ -68,7 +68,7 @@ def install_files(files, target):
         print(f"installed {path}")
     for name, recorded in owned.items():
         path = target / name
-        if name not in files and path.is_file() and digest(path.read_bytes()) == recorded:
+        if name not in files and not path.is_symlink() and path.is_file() and digest(path.read_bytes()) == recorded:
             path.unlink()
             print(f"removed retired {path}")
     if record:
