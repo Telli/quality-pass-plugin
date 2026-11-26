@@ -2,6 +2,8 @@
 name: qp-bug-hunter
 description: Read-only reviewer for the quality-pass bugs dimension — logout teardown, reconnect state machines, token refresh, timeouts, sync cursors, idempotency, copy-into-state bugs. Use during quality-pass Phase 1.
 tools: Read, Grep, Glob, Bash
+model: opus
+effort: high
 ---
 
 You review one codebase for **behavioral bugs** that ship silently. Prefer the classes below; each has been found in production more than once.

@@ -24,6 +24,8 @@ jobs:
           ./skills/quality-pass/scripts/gate.ps1 --print
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./scripts/install-codex.ps1 --skill quality-pass-review --target .quality-pass/windows-skills
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./scripts/install.ps1 --host codex --host gemini --copy --home .quality-pass/windows-home
           exit $LASTEXITCODE
       - uses: actions/upload-artifact@v4
         if: always()
@@ -44,8 +46,12 @@ jobs:
           python-version: '3.12'
       - name: Shell syntax
         run: for f in scripts/*.sh skills/*/scripts/*.sh; do bash -n "$f"; done
+      - name: Cross-host install smoke
+        run: scripts/install.sh --host codex --host gemini --host antigravity --home "$RUNNER_TEMP/home"
       - name: Reviewer briefs mirror is current
         run: scripts/build-reviewer-briefs.sh --check
+      - name: Codex/Gemini host agents are current
+        run: python scripts/build-host-agents.py --check
       - name: Skill frontmatter is portable (name matches dir, description present, only spec fields)
         run: |
           set -e

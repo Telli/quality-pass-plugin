@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0 — Unreleased
+
+- Reviewer agents pin model tiers: Claude `opus`/`sonnet` with explicit effort; mapped to `gpt-6.2-astra`/`gpt-6.2-sol` for Codex and `gemini-3.1-pro-preview`/`gemini-3.5-flash` for Gemini CLI via `hosts/models.json`.
+- Native Codex custom agents (`~/.codex/agents/qp_*.toml`) and Gemini CLI subagents (`~/.gemini/agents/qp-*.md`) plus `/quality-pass:*` Gemini commands, generated from `agents/` by `scripts/build-host-agents.py` and checked in CI.
+- `scripts/install.py` (with `install.sh`/`install.ps1`) installs user-wide for Claude Code, Codex, Gemini CLI, and Antigravity CLI; skills go to the shared `~/.agents/skills`. Re-runs refresh only unmodified files it installed.
+
 ## 1.1.0 — Unreleased
 
 - Structured baselines record commits, gate configuration, counts, failure identities/details, and current-run report evidence. Changed failures and reduced execution counts are regressions; unsupported/legacy evidence reports failure equivalence unknown. Existing baselines require explicit replacement.

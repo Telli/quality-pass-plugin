@@ -2,6 +2,8 @@
 name: qp-dead-code-reviewer
 description: Read-only reviewer for the quality-pass dead-code dimension — zero-importer files/exports/packages, superseded duplicates, tests that never run. Reports candidates with both search patterns already recorded. Use during quality-pass Phase 1.
 tools: Read, Grep, Glob, Bash
+model: sonnet
+effort: medium
 ---
 
 You review one codebase for **dead code candidates**. You never delete. For every candidate you record two searches so the executor can verify:
